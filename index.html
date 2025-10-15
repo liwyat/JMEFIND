@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>一键联系ERP工具</title>
+    <title>京ME联系ERP工具</title>
+    <!-- 引入SheetJS库用于Excel和CSV解析 -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -12,8 +14,8 @@
             font-family: "Microsoft YaHei", Arial, sans-serif;
         }
         .container {
-            max-width: 600px;
-            margin: 80px auto;
+            max-width: 800px;
+            margin: 30px auto;
             padding: 30px;
             background: #f5f7fa;
             border-radius: 10px;
@@ -31,11 +33,11 @@
         label {
             display: block;
             margin-bottom: 10px;
-            color: #34495e;
+            color: #3498db;
             font-weight: 500;
             font-size: 16px;
         }
-        input {
+        input, textarea {
             width: 100%;
             padding: 14px 15px;
             border: 1px solid #ddd;
@@ -43,46 +45,125 @@
             font-size: 16px;
             transition: all 0.3s;
         }
-        input:focus {
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+            font-family: inherit;
+        }
+        input:focus, textarea:focus {
             outline: none;
             border-color: #3498db;
             box-shadow: 0 0 0 2px rgba(52,152,219,0.2);
         }
+        .file-upload {
+            border: 1px dashed #ddd;
+            padding: 20px;
+            border-radius: 6px;
+            text-align: center;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+        .file-upload:hover {
+            border-color: #3498db;
+            background-color: rgba(52,152,219,0.05);
+        }
+        .file-upload input {
+            display: none;
+        }
+        .upload-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #3498db;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .upload-btn:hover {
+            background: #2980b9;
+        }
+        .template-link {
+            color: #3498db;
+            text-decoration: none;
+            font-size: 14px;
+            display: inline-block;
+            margin-top: 5px;
+            margin-right: 15px;
+        }
+        .template-link:hover {
+            text-decoration: underline;
+        }
         .btn-container {
             text-align: center;
+            margin: 30px 0 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        .group-buttons-container {
+            margin: 20px 0;
+            padding: 15px;
+            background: #fff;
+            border-radius: 6px;
+            border: 1px solid #eee;
+        }
+        .group-buttons-container h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        .split-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
         }
         button {
-            padding: 14px 30px;
+            padding: 12px 20px;
             border: none;
             border-radius: 6px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            background: #2ecc71;
-            color: white;
-            transition: background 0.3s;
+            transition: all 0.3s;
+            margin: 0 5px 10px;
         }
         button:hover {
-            background: #27ae60;
+            opacity: 0.9;
+            transform: translateY(-2px);
         }
         button:active {
             transform: scale(0.98);
         }
-        .result-group {
-            margin-top: 25px;
-            padding: 15px;
-            background: white;
-            border-radius: 6px;
-            border: 1px solid #eee;
+        .personal-btn {
+            background: #2ecc71;
+            color: white;
         }
-        #fullLink {
-            word-break: break-all;
-            color: #3498db;
-            font-size: 15px;
-            margin-top: 5px;
+        .group-btn {
+            background: #3498db;
+            color: white;
+        }
+        .invite-btn {
+            background: #9b59b6;
+            color: white;
+        }
+        .import-btn {
+            background: #f39c12;
+            color: white;
+        }
+        .split-btn {
+            background: #e67e22;
+            color: white;
         }
         .error {
             color: #e74c3c;
+            font-size: 14px;
+            margin-top: 8px;
+            display: none;
+        }
+        .success {
+            color: #27ae60;
             font-size: 14px;
             margin-top: 8px;
             display: none;
@@ -93,46 +174,192 @@
             font-size: 14px;
             margin-top: 15px;
         }
+        .hint {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        #fileInfo {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        .template-links {
+            margin-top: 10px;
+        }
+        .count-info {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin: 10px 0;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>京ME联系ERP工具</h1>
 
-        <!-- 仅保留链接后缀输入框 -->
+        <!-- 联系人ERP输入框 -->
         <div class="input-group">
-            <label for="suffixLink">请输入ERP（只能输入ERP）</label>
+            <label for="suffixLink">请输入联系人ERP（单个）</label>
             <input 
                 type="text" 
                 id="suffixLink" 
-                placeholder="请输入ERP"
+                placeholder="请输入单个ERP"
                 autocomplete="off"
             >
             <div class="error" id="suffixError">请输入有效的ERP，不能为空</div>
         </div>
 
-        <!-- 一键跳转按钮 -->
-        <div class="btn-container">
-            <button id="jumpBtn">一键跳转</button>
+        <!-- 群号输入框 -->
+        <div class="input-group">
+            <label for="groupId">请输入群号</label>
+            <input 
+                type="text" 
+                id="groupId" 
+                placeholder="请输入群号"
+                autocomplete="off"
+            >
+            <div class="error" id="groupError">请输入有效的群号，不能为空</div>
         </div>
 
+        <!-- 拉群用多ERP输入框 -->
+        <div class="input-group">
+            <label for="inviteIds">请输入需要拉群的ERP（多个）</label>
+            <textarea 
+                id="inviteIds" 
+                placeholder="请输入多个ERP，用英文逗号分隔（例如：erp1,erp2,erp3）"
+                autocomplete="off"
+            ></textarea>
+            <div class="hint">提示：使用英文逗号分隔多个ERP，不要有空格</div>
+            <div class="error" id="inviteError">请输入至少一个有效的ERP</div>
+            <div class="count-info" id="erpCountInfo">已输入：0个ERP</div>
+        </div>
+
+        <!-- 拆分拉群按钮容器 -->
+        <div class="group-buttons-container" id="splitButtonsContainer" style="display: none;">
+            <h3>批量拉群（按150人/组拆分）</h3>
+            <div class="split-buttons" id="splitButtons"></div>
+        </div>
+
+        <!-- 导入区域（支持Excel和CSV） -->
+        <div class="input-group">
+            <label>导入文件中的ERP名单（竖向排列）</label>
+            <div class="file-upload">
+                <div class="upload-btn" id="browseBtn">选择文件</div>
+                <p>支持 .xlsx 和 .csv 格式，ERP需竖向排列在第一列（系统会自动忽略表头）</p>
+                <input type="file" id="fileInput" accept=".xlsx,.csv">
+                <div id="fileInfo"></div>
+            </div>
+            <button id="importBtn" class="import-btn">导入ERP名单</button>
+            <div class="template-links">
+                <a href="#" id="xlsxTemplateDownload" class="template-link">下载Excel模板</a>
+                <a href="#" id="csvTemplateDownload" class="template-link">下载CSV模板</a>
+            </div>
+            <div class="success" id="importSuccess">导入成功！已填充到多ERP输入框</div>
+            <div class="error" id="importError">导入失败，请检查文件格式是否正确</div>
+        </div>
+
+        <!-- 基础功能按钮 -->
+        <div class="btn-container">
+            <button id="jumpBtn" class="personal-btn">联系个人</button>
+            <button id="groupBtn" class="group-btn">加入群组</button>
+            <button id="inviteBtn" class="invite-btn">拉群（全部联系人）</button>
+        </div>
 
         <div class="info">
-            说明：仅供参考，无授权请勿乱找人！！！！！！！！
+            说明：仅供参考，无授权请勿乱找人！！！单次拉群最多支持150人
         </div>
     </div>
 
     <script>
-        // 固定链接前缀（后台默认）
+        // 固定链接前缀
         const FIXED_LINK = 'timline://chat/?topin=';
+        const GROUP_LINK_PREFIX = 'timline://chat/?topin=';
+        const INVITE_LINK_PREFIX = 'timline://chat/?topin=';
+        const MAX_GROUP_SIZE = 150; // 单次拉群最大人数
         
         // 获取页面元素
         const suffixInput = document.getElementById('suffixLink');
-        const fullLinkDisplay = document.getElementById('fullLink');
+        const groupIdInput = document.getElementById('groupId');
+        const inviteIdsInput = document.getElementById('inviteIds');
+        const fileInput = document.getElementById('fileInput');
+        const browseBtn = document.getElementById('browseBtn');
+        const importBtn = document.getElementById('importBtn');
+        const xlsxTemplateDownload = document.getElementById('xlsxTemplateDownload');
+        const csvTemplateDownload = document.getElementById('csvTemplateDownload');
+        const fileInfo = document.getElementById('fileInfo');
+        const erpCountInfo = document.getElementById('erpCountInfo');
+        const splitButtonsContainer = document.getElementById('splitButtonsContainer');
+        const splitButtons = document.getElementById('splitButtons');
+        
         const suffixError = document.getElementById('suffixError');
+        const groupError = document.getElementById('groupError');
+        const inviteError = document.getElementById('inviteError');
+        const importError = document.getElementById('importError');
+        const importSuccess = document.getElementById('importSuccess');
+        
         const jumpBtn = document.getElementById('jumpBtn');
+        const groupBtn = document.getElementById('groupBtn');
+        const inviteBtn = document.getElementById('inviteBtn');
 
-        // 验证后缀是否有效
+        // 初始化 - 监听ERP输入变化，更新计数
+        inviteIdsInput.addEventListener('input', updateERPCount);
+        updateERPCount(); // 初始更新
+
+        // 更新ERP计数显示
+        function updateERPCount() {
+            const ids = inviteIdsInput.value.replace(/\s+/g, '').split(',');
+            const validIds = ids.filter(id => id.trim() !== '');
+            erpCountInfo.textContent = `已输入：${validIds.length}个ERP`;
+            
+            // 自动生成拆分按钮
+            generateSplitButtons(validIds);
+        }
+
+        // 按150人一组生成拆分按钮
+        function generateSplitButtons(erpList) {
+            // 清空现有按钮
+            splitButtons.innerHTML = '';
+            
+            if (erpList.length === 0) {
+                splitButtonsContainer.style.display = 'none';
+                return;
+            }
+            
+            // 计算分组数量
+            const groupCount = Math.ceil(erpList.length / MAX_GROUP_SIZE);
+            
+            // 显示分组按钮容器（当数量超过150时才显示，或者始终显示）
+            splitButtonsContainer.style.display = 'block';
+            
+            // 生成每组按钮
+            for (let i = 0; i < groupCount; i++) {
+                // 计算当前组的起始和结束索引
+                const startIndex = i * MAX_GROUP_SIZE;
+                const endIndex = Math.min((i + 1) * MAX_GROUP_SIZE, erpList.length);
+                const currentGroup = erpList.slice(startIndex, endIndex);
+                
+                // 创建按钮
+                const btn = document.createElement('button');
+                btn.className = 'split-btn';
+                btn.textContent = `拉群 ${startIndex + 1}-${endIndex}人`;
+                btn.title = `拉取第${startIndex + 1}至${endIndex}个联系人`;
+                
+                // 绑定点击事件
+                btn.addEventListener('click', () => {
+                    const groupLink = INVITE_LINK_PREFIX + currentGroup.join(',');
+                    if (confirm(`即将拉取第${startIndex + 1}-${endIndex}个联系人（共${currentGroup.length}人），是否继续？`)) {
+                        window.location.href = groupLink;
+                    }
+                });
+                
+                splitButtons.appendChild(btn);
+            }
+        }
+
+        // 验证ERP是否有效
         function validateSuffix() {
             const suffix = suffixInput.value.trim();
             if (!suffix) {
@@ -143,41 +370,274 @@
             return true;
         }
 
-        // 生成完整链接
+        // 验证群号是否有效
+        function validateGroupId() {
+            const groupId = groupIdInput.value.trim();
+            if (!groupId) {
+                groupError.style.display = 'block';
+                return false;
+            }
+            groupError.style.display = 'none';
+            return true;
+        }
+
+        // 验证拉群用的多ERP是否有效
+        function validateInviteIds() {
+            // 移除所有空格并按逗号分割
+            const ids = inviteIdsInput.value.replace(/\s+/g, '').split(',');
+            // 过滤空值
+            const validIds = ids.filter(id => id.trim() !== '');
+            
+            if (validIds.length === 0) {
+                inviteError.style.display = 'block';
+                return false;
+            }
+            inviteError.style.display = 'none';
+            return true;
+        }
+
+        // 生成个人联系链接
         function getFullLink() {
             const suffix = suffixInput.value.trim();
             return FIXED_LINK + suffix;
         }
 
-        // 更新完整链接显示
-        function updateLinkDisplay() {
-            if (validateSuffix()) {
-                fullLinkDisplay.textContent = getFullLink();
-            } else {
-                fullLinkDisplay.textContent = '输入后缀后将显示完整链接';
-            }
+        // 生成群组链接
+        function getGroupLink() {
+            const groupId = groupIdInput.value.trim();
+            return GROUP_LINK_PREFIX + groupId + '&type=2';
         }
 
-        // 一键跳转功能
+        // 生成拉群链接（多ERP）
+        function getInviteLink() {
+            // 处理输入，移除空格并保持逗号分隔
+            const ids = inviteIdsInput.value.replace(/\s+/g, '');
+            return INVITE_LINK_PREFIX + ids;
+        }
+
+        // 跳转到个人联系
         function jumpToLink() {
             if (validateSuffix()) {
                 const fullLink = getFullLink();
-                // 显示确认提示
                 if (confirm(`即将跳转京ME联系人，是否继续？`)) {
                     window.location.href = fullLink;
                 }
             }
         }
 
+        // 跳转到群组
+        function jumpToGroup() {
+            if (validateGroupId()) {
+                const groupLink = getGroupLink();
+                if (confirm(`即将跳转京ME群组，是否继续？`)) {
+                    window.location.href = groupLink;
+                }
+            }
+        }
+
+        // 拉群操作（全部联系人）
+        function inviteToGroup() {
+            if (validateInviteIds()) {
+                const ids = inviteIdsInput.value.replace(/\s+/g, '').split(',').filter(id => id);
+                const totalCount = ids.length;
+                
+                // 如果超过最大限制，提示用户使用拆分按钮
+                if (totalCount > MAX_GROUP_SIZE) {
+                    alert(`单次拉群最多支持${MAX_GROUP_SIZE}人，当前共${totalCount}人，请使用下方的分组拉群按钮`);
+                    return;
+                }
+                
+                const inviteLink = getInviteLink();
+                if (confirm(`即将拉取全部${totalCount}个联系人进群，是否继续？`)) {
+                    window.location.href = inviteLink;
+                }
+            }
+        }
+
+        // 处理文件选择
+        browseBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                fileInfo.textContent = `已选择：${file.name}`;
+                // 重置状态提示
+                importError.style.display = 'none';
+                importSuccess.style.display = 'none';
+            } else {
+                fileInfo.textContent = '';
+            }
+        });
+
+        // 导入文件（支持Excel和CSV）
+        importBtn.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                importError.textContent = '请先选择文件';
+                importError.style.display = 'block';
+                importSuccess.style.display = 'none';
+                return;
+            }
+
+            // 验证文件格式
+            const fileName = file.name.toLowerCase();
+            if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.csv')) {
+                importError.textContent = '请选择.xlsx或.csv格式的文件';
+                importError.style.display = 'block';
+                importSuccess.style.display = 'none';
+                return;
+            }
+
+            try {
+                // 读取并解析文件（自动忽略表头）
+                const data = await readFile(file);
+                if (data.length === 0) {
+                    importError.textContent = '未从文件中读取到有效ERP数据，请检查文件内容（需竖向排列在第一列）';
+                    importError.style.display = 'block';
+                    importSuccess.style.display = 'none';
+                    return;
+                }
+
+                // 将解析的ERP数据填充到输入框（不含表头）
+                inviteIdsInput.value = data.join(',');
+                importSuccess.textContent = `导入成功！共导入${data.length}个ERP`;
+                importSuccess.style.display = 'block';
+                importError.style.display = 'none';
+                inviteError.style.display = 'none';
+                
+                // 更新计数和拆分按钮
+                updateERPCount();
+
+            } catch (error) {
+                console.error('导入失败:', error);
+                importError.textContent = '文件解析失败，请检查文件是否损坏或格式正确';
+                importError.style.display = 'block';
+                importSuccess.style.display = 'none';
+            }
+        });
+
+        // 读取文件并解析第一列数据（支持Excel和CSV，自动忽略表头即第一行）
+        function readFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        let workbook;
+                        const fileName = file.name.toLowerCase();
+                        
+                        // 根据文件类型选择不同的解析方式
+                        if (fileName.endsWith('.xlsx')) {
+                            const data = new Uint8Array(e.target.result);
+                            workbook = XLSX.read(data, { type: 'array' });
+                        } else if (fileName.endsWith('.csv')) {
+                            // 解析CSV文件
+                            workbook = XLSX.read(e.target.result, { type: 'string' });
+                        }
+                        
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        
+                        // 转换为JSON，只读取第一列数据
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        const erpList = [];
+                        
+                        // 提取第一列非空数据（从第二行开始，自动忽略表头）
+                        // i从1开始，跳过i=0的表头行
+                        for (let i = 1; i < jsonData.length; i++) {
+                            const value = jsonData[i][0];
+                            if (value && typeof value === 'string' && value.trim() !== '') {
+                                erpList.push(value.trim());
+                            }
+                        }
+                        
+                        resolve(erpList);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                
+                // 根据文件类型选择不同的读取方式
+                if (file.name.toLowerCase().endsWith('.xlsx')) {
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    reader.readAsText(file);
+                }
+            });
+        }
+
+        // 生成并下载Excel模板
+        xlsxTemplateDownload.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            // 创建模板数据（第一列标题为"ERP"，预留空行）
+            const data = [
+                ['ERP'], // 表头，导入时会自动忽略
+                ['erp1'], // 示例数据
+                ['erp2'],
+                ['erp3']
+            ];
+            
+            // 创建工作簿和工作表
+            const worksheet = XLSX.utils.aoa_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'ERP名单');
+            
+            // 生成文件并下载
+            XLSX.writeFile(workbook, 'ERP导入模板.xlsx');
+        });
+
+        // 生成并下载CSV模板
+        csvTemplateDownload.addEventListener('click', (e) => {
+            e.preventDefault();
+            
+            // CSV内容：第一行为标题（导入时会自动忽略），后续为示例数据
+            const csvContent = "ERP\nerp1\nerp2\nerp3\n";
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            
+            // 创建下载链接
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'ERP导入模板.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
         // 绑定事件
         jumpBtn.addEventListener('click', jumpToLink);
-        suffixInput.addEventListener('input', updateLinkDisplay); // 实时更新链接显示
+        groupBtn.addEventListener('click', jumpToGroup);
+        inviteBtn.addEventListener('click', inviteToGroup);
+        
+        // 失去焦点时验证
         suffixInput.addEventListener('blur', validateSuffix);
+        groupIdInput.addEventListener('blur', validateGroupId);
+        inviteIdsInput.addEventListener('blur', validateInviteIds);
 
         // 按Enter键直接跳转
         suffixInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 jumpToLink();
+            }
+        });
+
+        groupIdInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                jumpToGroup();
+            }
+        });
+
+        inviteIdsInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                // 如果超过150人，不执行全量拉群
+                const ids = inviteIdsInput.value.replace(/\s+/g, '').split(',').filter(id => id);
+                if (ids.length <= MAX_GROUP_SIZE) {
+                    inviteToGroup();
+                }
             }
         });
     </script>
