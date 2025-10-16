@@ -257,7 +257,7 @@
             <label>拉群后校验（核对缺失人员）</label>
             <div class="file-upload">
                 <div class="upload-btn" id="browseCheckBtn">选择群成员文件</div>
-                <p>支持 .csv 格式，已拉群人员ERP需竖向排列在第一列</p>
+                <p>请联系群主到处群成员名单导入即可</p>
                 <input type="file" id="checkFileInput" accept=".csv">
                 <div id="checkFileInfo"></div>
             </div>
@@ -526,14 +526,19 @@
                         const firstSheetName = workbook.SheetNames[0];
                         const worksheet = workbook.Sheets[firstSheetName];
                         
-                        // 转换为JSON，只读取第一列数据
+                        // 转换为JSON
                         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                         const erpList = [];
                         
-                        // 提取第一列非空数据（从第二行开始，自动忽略表头）
+                        // 检查文件名是否包含特定字符串
+                        const isSpecialFile = file.name.includes('接待量（绩效月T-1）');
+                        // 根据文件名决定从哪一列读取数据（0表示A列，2表示C列）
+                        const targetColumn = isSpecialFile ? 2 : 0;
+                        
+                        // 提取指定列非空数据（从第二行开始，自动忽略表头）
                         // i从1开始，跳过i=0的表头行
                         for (let i = 1; i < jsonData.length; i++) {
-                            const value = jsonData[i][0];
+                            const value = jsonData[i][targetColumn];
                             if (value && typeof value === 'string' && value.trim() !== '') {
                                 erpList.push(value.trim());
                             }
