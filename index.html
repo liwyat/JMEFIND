@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>京ME联系ERP工具</title>
+    <title>京ME联系工具</title>
     <!-- 引入SheetJS库用于Excel和CSV解析 -->
     <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
     <style>
@@ -198,7 +198,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>京ME联系ERP工具</h1>
+        <h1>京ME联系工具</h1>
 
         <!-- 联系人ERP输入框 -->
         <div class="input-group">
@@ -210,19 +210,10 @@
                 autocomplete="off"
             >
             <div class="error" id="suffixError">请输入有效的ERP，不能为空</div>
+            <button id="jumpBtn" class="personal-btn" style="margin-top: 10px;">联系ERP</button>
         </div>
 
-        <!-- 群号输入框 -->
-        <div class="input-group">
-            <label for="groupId">请输入群号</label>
-            <input 
-                type="text" 
-                id="groupId" 
-                placeholder="请输入群号"
-                autocomplete="off"
-            >
-            <div class="error" id="groupError">请输入有效的群号，不能为空</div>
-        </div>
+
 
         <!-- 拉群用多ERP输入框 -->
         <div class="input-group">
@@ -260,16 +251,41 @@
             <div class="success" id="importSuccess">导入成功！已填充到多ERP输入框</div>
             <div class="error" id="importError">导入失败，请检查文件格式是否正确</div>
         </div>
+        
+        <!-- 拉群后校验模块 -->
+        <div class="input-group" style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px;">
+            <label>拉群后校验（核对缺失人员）</label>
+            <div class="file-upload">
+                <div class="upload-btn" id="browseCheckBtn">选择群成员文件</div>
+                <p>支持 .csv 格式，已拉群人员ERP需竖向排列在第一列</p>
+                <input type="file" id="checkFileInput" accept=".csv">
+                <div id="checkFileInfo"></div>
+            </div>
+            <button id="checkBtn" class="import-btn">核对缺失人员</button>
+            
+            <!-- 核对结果显示区域 -->
+            <div id="checkResultContainer" style="display: none; margin-top: 20px; padding: 15px; background: #fff; border-radius: 6px; border: 1px solid #eee;">
+                <h3 style="color: #2c3e50; margin-bottom: 15px; font-size: 18px;">核对结果</h3>
+                <div class="count-info" id="missingCountInfo"></div>
+                <textarea id="missingErpList" style="margin-top: 10px;" placeholder="缺失人员ERP将显示在这里" disabled></textarea>
+                
+                <!-- 缺失人员拉群按钮容器 -->
+                <div class="group-buttons-container" id="missingSplitButtonsContainer" style="display: none;">
+                    <h3>批量拉取缺失人员（按150人/组拆分）</h3>
+                    <div class="split-buttons" id="missingSplitButtons"></div>
+                </div>
+            </div>
+            
+            <div class="success" id="checkSuccess">核对成功！</div>
+            <div class="error" id="checkError">核对失败，请检查文件格式是否正确</div>
+        </div>
 
         <!-- 基础功能按钮 -->
-        <div class="btn-container">
-            <button id="jumpBtn" class="personal-btn">联系个人</button>
-            <button id="groupBtn" class="group-btn">加入群组</button>
-            <button id="inviteBtn" class="invite-btn">拉群（全部联系人）</button>
+        <div class="btn-container" style="display: none;">
         </div>
 
         <div class="info">
-            说明：仅供参考，无授权请勿乱找人！！！单次拉群最多支持150人
+            说明：仅供参考，无授权请勿乱找人！！！
         </div>
     </div>
 
@@ -282,7 +298,6 @@
         
         // 获取页面元素
         const suffixInput = document.getElementById('suffixLink');
-        const groupIdInput = document.getElementById('groupId');
         const inviteIdsInput = document.getElementById('inviteIds');
         const fileInput = document.getElementById('fileInput');
         const browseBtn = document.getElementById('browseBtn');
@@ -295,14 +310,24 @@
         const splitButtons = document.getElementById('splitButtons');
         
         const suffixError = document.getElementById('suffixError');
-        const groupError = document.getElementById('groupError');
         const inviteError = document.getElementById('inviteError');
         const importError = document.getElementById('importError');
         const importSuccess = document.getElementById('importSuccess');
         
         const jumpBtn = document.getElementById('jumpBtn');
-        const groupBtn = document.getElementById('groupBtn');
-        const inviteBtn = document.getElementById('inviteBtn');
+        
+        // 拉群后校验模块元素
+        const checkFileInput = document.getElementById('checkFileInput');
+        const browseCheckBtn = document.getElementById('browseCheckBtn');
+        const checkBtn = document.getElementById('checkBtn');
+        const checkFileInfo = document.getElementById('checkFileInfo');
+        const checkResultContainer = document.getElementById('checkResultContainer');
+        const missingCountInfo = document.getElementById('missingCountInfo');
+        const missingErpList = document.getElementById('missingErpList');
+        const missingSplitButtonsContainer = document.getElementById('missingSplitButtonsContainer');
+        const missingSplitButtons = document.getElementById('missingSplitButtons');
+        const checkSuccess = document.getElementById('checkSuccess');
+        const checkError = document.getElementById('checkError');
 
         // 初始化 - 监听ERP输入变化，更新计数
         inviteIdsInput.addEventListener('input', updateERPCount);
@@ -370,16 +395,7 @@
             return true;
         }
 
-        // 验证群号是否有效
-        function validateGroupId() {
-            const groupId = groupIdInput.value.trim();
-            if (!groupId) {
-                groupError.style.display = 'block';
-                return false;
-            }
-            groupError.style.display = 'none';
-            return true;
-        }
+
 
         // 验证拉群用的多ERP是否有效
         function validateInviteIds() {
@@ -402,11 +418,7 @@
             return FIXED_LINK + suffix;
         }
 
-        // 生成群组链接
-        function getGroupLink() {
-            const groupId = groupIdInput.value.trim();
-            return GROUP_LINK_PREFIX + groupId + '&type=2';
-        }
+
 
         // 生成拉群链接（多ERP）
         function getInviteLink() {
@@ -425,34 +437,9 @@
             }
         }
 
-        // 跳转到群组
-        function jumpToGroup() {
-            if (validateGroupId()) {
-                const groupLink = getGroupLink();
-                if (confirm(`即将跳转京ME群组，是否继续？`)) {
-                    window.location.href = groupLink;
-                }
-            }
-        }
 
-        // 拉群操作（全部联系人）
-        function inviteToGroup() {
-            if (validateInviteIds()) {
-                const ids = inviteIdsInput.value.replace(/\s+/g, '').split(',').filter(id => id);
-                const totalCount = ids.length;
-                
-                // 如果超过最大限制，提示用户使用拆分按钮
-                if (totalCount > MAX_GROUP_SIZE) {
-                    alert(`单次拉群最多支持${MAX_GROUP_SIZE}人，当前共${totalCount}人，请使用下方的分组拉群按钮`);
-                    return;
-                }
-                
-                const inviteLink = getInviteLink();
-                if (confirm(`即将拉取全部${totalCount}个联系人进群，是否继续？`)) {
-                    window.location.href = inviteLink;
-                }
-            }
-        }
+
+
 
         // 处理文件选择
         browseBtn.addEventListener('click', () => {
@@ -608,14 +595,186 @@
             document.body.removeChild(link);
         });
 
+        // 拉群后校验模块功能
+        
+        // 处理校验文件选择
+        browseCheckBtn.addEventListener('click', () => {
+            checkFileInput.click();
+        });
+
+        checkFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                checkFileInfo.textContent = `已选择：${file.name}`;
+                // 重置状态提示
+                checkError.style.display = 'none';
+                checkSuccess.style.display = 'none';
+            } else {
+                checkFileInfo.textContent = '';
+            }
+        });
+
+        // 核对缺失人员
+        checkBtn.addEventListener('click', async () => {
+            const file = checkFileInput.files[0];
+            if (!file) {
+                checkError.textContent = '请先选择群成员文件';
+                checkError.style.display = 'block';
+                checkSuccess.style.display = 'none';
+                return;
+            }
+
+            // 验证文件格式
+            const fileName = file.name.toLowerCase();
+            if (!fileName.endsWith('.csv')) {
+                checkError.textContent = '请选择.csv格式的文件';
+                checkError.style.display = 'block';
+                checkSuccess.style.display = 'none';
+                return;
+            }
+
+            // 验证是否有需要拉群的ERP
+            const inviteIds = inviteIdsInput.value.replace(/\s+/g, '').split(',').filter(id => id.trim() !== '');
+            if (inviteIds.length === 0) {
+                checkError.textContent = '请先导入或输入需要拉群的ERP名单';
+                checkError.style.display = 'block';
+                checkSuccess.style.display = 'none';
+                return;
+            }
+
+            try {
+                // 读取并解析群成员文件
+                const groupMemberErps = await readGroupMemberFile(file);
+                if (groupMemberErps.length === 0) {
+                    checkError.textContent = '未从文件中读取到有效ERP数据，请检查文件内容（需竖向排列在第一列）';
+                    checkError.style.display = 'block';
+                    checkSuccess.style.display = 'none';
+                    return;
+                }
+
+                // 比对并找出缺失的ERP
+                const missingErps = findMissingErps(inviteIds, groupMemberErps);
+                
+                // 显示核对结果
+                displayCheckResult(missingErps);
+                
+                checkSuccess.style.display = 'block';
+                checkError.style.display = 'none';
+
+            } catch (error) {
+                console.error('核对失败:', error);
+                checkError.textContent = '文件解析失败，请检查文件是否损坏或格式正确';
+                checkError.style.display = 'block';
+                checkSuccess.style.display = 'none';
+            }
+        });
+
+        // 读取群成员文件并解析第一列数据
+        function readGroupMemberFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        let workbook;
+                        
+                        // 解析CSV文件
+                        workbook = XLSX.read(e.target.result, { type: 'string' });
+                        
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        
+                        // 转换为JSON，只读取第一列数据
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        const erpList = [];
+                        
+                        // 提取第一列非空数据（从第一行开始，不忽略表头）
+                        for (let i = 0; i < jsonData.length; i++) {
+                            const value = jsonData[i][0];
+                            if (value && typeof value === 'string' && value.trim() !== '') {
+                                erpList.push(value.trim());
+                            }
+                        }
+                        
+                        resolve(erpList);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                
+                reader.readAsText(file);
+            });
+        }
+
+        // 比对并找出缺失的ERP
+        function findMissingErps(inviteErps, groupMemberErps) {
+            // 创建群成员ERP的Set以提高查找效率
+            const groupMemberSet = new Set(groupMemberErps.map(erp => erp.toLowerCase()));
+            
+            // 找出在邀请列表中但不在群成员列表中的ERP
+            return inviteErps.filter(erp => !groupMemberSet.has(erp.toLowerCase()));
+        }
+
+        // 显示核对结果
+        function displayCheckResult(missingErps) {
+            // 显示结果容器
+            checkResultContainer.style.display = 'block';
+            
+            // 显示缺失数量和列表
+            missingCountInfo.textContent = `共缺失 ${missingErps.length} 个ERP`;
+            missingErpList.value = missingErps.join(',');
+            
+            // 生成缺失人员的拆分按钮
+            generateMissingSplitButtons(missingErps);
+        }
+
+        // 为缺失人员生成拆分拉群按钮
+        function generateMissingSplitButtons(erpList) {
+            // 清空现有按钮
+            missingSplitButtons.innerHTML = '';
+            
+            if (erpList.length === 0) {
+                missingSplitButtonsContainer.style.display = 'none';
+                return;
+            }
+            
+            // 计算分组数量
+            const groupCount = Math.ceil(erpList.length / MAX_GROUP_SIZE);
+            
+            // 显示分组按钮容器
+            missingSplitButtonsContainer.style.display = 'block';
+            
+            // 生成每组按钮
+            for (let i = 0; i < groupCount; i++) {
+                // 计算当前组的起始和结束索引
+                const startIndex = i * MAX_GROUP_SIZE;
+                const endIndex = Math.min((i + 1) * MAX_GROUP_SIZE, erpList.length);
+                const currentGroup = erpList.slice(startIndex, endIndex);
+                
+                // 创建按钮
+                const btn = document.createElement('button');
+                btn.className = 'split-btn';
+                btn.textContent = `拉取缺失人员 ${startIndex + 1}-${endIndex}人`;
+                btn.title = `拉取第${startIndex + 1}至${endIndex}个缺失人员`;
+                
+                // 绑定点击事件
+                btn.addEventListener('click', () => {
+                    const groupLink = INVITE_LINK_PREFIX + currentGroup.join(',');
+                    if (confirm(`即将拉取第${startIndex + 1}-${endIndex}个缺失人员（共${currentGroup.length}人），是否继续？`)) {
+                        window.location.href = groupLink;
+                    }
+                });
+                
+                missingSplitButtons.appendChild(btn);
+            }
+        }
+
         // 绑定事件
         jumpBtn.addEventListener('click', jumpToLink);
-        groupBtn.addEventListener('click', jumpToGroup);
-        inviteBtn.addEventListener('click', inviteToGroup);
         
         // 失去焦点时验证
         suffixInput.addEventListener('blur', validateSuffix);
-        groupIdInput.addEventListener('blur', validateGroupId);
+
         inviteIdsInput.addEventListener('blur', validateInviteIds);
 
         // 按Enter键直接跳转
@@ -625,21 +784,7 @@
             }
         });
 
-        groupIdInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                jumpToGroup();
-            }
-        });
 
-        inviteIdsInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                // 如果超过150人，不执行全量拉群
-                const ids = inviteIdsInput.value.replace(/\s+/g, '').split(',').filter(id => id);
-                if (ids.length <= MAX_GROUP_SIZE) {
-                    inviteToGroup();
-                }
-            }
-        });
     </script>
 </body>
 </html>
