@@ -220,10 +220,10 @@
             <label for="inviteIds">请输入需要拉群的ERP（多个）</label>
             <textarea 
                 id="inviteIds" 
-                placeholder="请输入多个ERP，用英文逗号分隔（例如：erp1,erp2,erp3）"
+                placeholder="请输入多个ERP，可用英文逗号分隔或每行一个ERP（例如：erp1,erp2,erp3 或每行一个）"
                 autocomplete="off"
             ></textarea>
-            <div class="hint">提示：使用英文逗号分隔多个ERP，不要有空格</div>
+            <div class="hint">提示：支持英文逗号分隔或每行一个ERP，系统会自动处理格式</div>
             <div class="error" id="inviteError">请输入至少一个有效的ERP</div>
             <div class="count-info" id="erpCountInfo">已输入：0个ERP</div>
         </div>
@@ -239,7 +239,7 @@
             <label>导入文件中的ERP名单（竖向排列）</label>
             <div class="file-upload">
                 <div class="upload-btn" id="browseBtn">选择文件</div>
-                <p>支持 .xlsx 和 .csv 格式，ERP需竖向排列在第一列（系统会自动忽略表头）</p>
+                <p>支持看板直接导入，支持 .xlsx 和 .csv 格式，ERP需竖向排列在第一列（系统会自动忽略表头）</p>
                 <input type="file" id="fileInput" accept=".xlsx,.csv">
                 <div id="fileInfo"></div>
             </div>
@@ -333,10 +333,19 @@
         inviteIdsInput.addEventListener('input', updateERPCount);
         updateERPCount(); // 初始更新
 
+        // 处理ERP输入内容，支持多行或逗号分隔
+        function processERPInput(input) {
+            // 首先按换行符分割，然后对每一行按逗号分割，最后去重和过滤空值
+            return input
+                .split(/[\r\n,]/)  // 按换行符或逗号分割
+                .map(id => id.trim())  // 去除首尾空格
+                .filter(id => id !== '')  // 过滤空值
+                .filter((id, index, self) => self.indexOf(id) === index);  // 去重
+        }
+
         // 更新ERP计数显示
         function updateERPCount() {
-            const ids = inviteIdsInput.value.replace(/\s+/g, '').split(',');
-            const validIds = ids.filter(id => id.trim() !== '');
+            const validIds = processERPInput(inviteIdsInput.value);
             erpCountInfo.textContent = `已输入：${validIds.length}个ERP`;
             
             // 自动生成拆分按钮
@@ -399,10 +408,7 @@
 
         // 验证拉群用的多ERP是否有效
         function validateInviteIds() {
-            // 移除所有空格并按逗号分割
-            const ids = inviteIdsInput.value.replace(/\s+/g, '').split(',');
-            // 过滤空值
-            const validIds = ids.filter(id => id.trim() !== '');
+            const validIds = processERPInput(inviteIdsInput.value);
             
             if (validIds.length === 0) {
                 inviteError.style.display = 'block';
@@ -422,9 +428,9 @@
 
         // 生成拉群链接（多ERP）
         function getInviteLink() {
-            // 处理输入，移除空格并保持逗号分隔
-            const ids = inviteIdsInput.value.replace(/\s+/g, '');
-            return INVITE_LINK_PREFIX + ids;
+            // 处理输入，支持多行或逗号分隔，并转换为逗号分隔格式
+            const validIds = processERPInput(inviteIdsInput.value);
+            return INVITE_LINK_PREFIX + validIds.join(',');
         }
 
         // 跳转到个人联系
@@ -639,8 +645,8 @@
             }
 
             // 验证是否有需要拉群的ERP
-            const inviteIds = inviteIdsInput.value.replace(/\s+/g, '').split(',').filter(id => id.trim() !== '');
-            if (inviteIds.length === 0) {
+            const validIds = processERPInput(inviteIdsInput.value);
+            if (validIds.length === 0) {
                 checkError.textContent = '请先导入或输入需要拉群的ERP名单';
                 checkError.style.display = 'block';
                 checkSuccess.style.display = 'none';
@@ -658,7 +664,7 @@
                 }
 
                 // 比对并找出缺失的ERP
-                const missingErps = findMissingErps(inviteIds, groupMemberErps);
+                const missingErps = validIds.filter(id => !groupMemberErps.includes(id));
                 
                 // 显示核对结果
                 displayCheckResult(missingErps);
@@ -696,7 +702,7 @@
                         for (let i = 0; i < jsonData.length; i++) {
                             const value = jsonData[i][0];
                             if (value && typeof value === 'string' && value.trim() !== '') {
-                                erpList.push(value.trim());
+                                erpList.push(value.trim().toLowerCase());
                             }
                         }
                         
@@ -726,7 +732,7 @@
             checkResultContainer.style.display = 'block';
             
             // 显示缺失数量和列表
-            missingCountInfo.textContent = `共缺失 ${missingErps.length} 个ERP`;
+            missingCountInfo.textContent = `共核对${processERPInput(inviteIdsInput.value).length}个ERP，缺失${missingErps.length}个`;
             missingErpList.value = missingErps.join(',');
             
             // 生成缺失人员的拆分按钮
