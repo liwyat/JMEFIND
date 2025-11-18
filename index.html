@@ -220,10 +220,10 @@
             <label for="inviteIds">请输入需要拉群的ERP（多个）</label>
             <textarea 
                 id="inviteIds" 
-                placeholder="请输入多个ERP，可用英文逗号分隔或每行一个ERP（例如：erp1,erp2,erp3 或每行一个）"
+                placeholder="请输入多个ERP，可用英文逗号分隔、空格分隔或每行一个ERP（例如：erp1,erp2,erp3 或 erp1 erp2 erp3 或每行一个）"
                 autocomplete="off"
             ></textarea>
-            <div class="hint">提示：支持英文逗号分隔或每行一个ERP，系统会自动处理格式</div>
+            <div class="hint">提示：支持英文逗号分隔、空格分隔或每行一个ERP，系统会自动处理格式</div>
             <div class="error" id="inviteError">请输入至少一个有效的ERP</div>
             <div class="count-info" id="erpCountInfo">已输入：0个ERP</div>
         </div>
@@ -239,7 +239,7 @@
             <label>导入文件中的ERP名单（竖向排列）</label>
             <div class="file-upload">
                 <div class="upload-btn" id="browseBtn">选择文件</div>
-                <p>支持看板直接导入，支持 .xlsx 和 .csv 格式，ERP需竖向排列在第一列（系统会自动忽略表头）</p>
+                <p>支持 .xlsx 和 .csv 格式，ERP需竖向排列在第一列，表头为ERP（系统会自动忽略表头）</p>
                 <input type="file" id="fileInput" accept=".xlsx,.csv">
                 <div id="fileInfo"></div>
             </div>
@@ -257,7 +257,7 @@
             <label>拉群后校验（核对缺失人员）</label>
             <div class="file-upload">
                 <div class="upload-btn" id="browseCheckBtn">选择群成员文件</div>
-                <p>请联系群主到处群成员名单导入即可</p>
+                <p>请联系群主导出群成员名单直接导入即可</p>
                 <input type="file" id="checkFileInput" accept=".csv">
                 <div id="checkFileInfo"></div>
             </div>
@@ -285,7 +285,7 @@
         </div>
 
         <div class="info">
-            说明：仅供参考，无授权请勿乱找人！！！
+            说明：仅供参考学习使用，无授权请勿乱找人！！！后果自负！
         </div>
     </div>
 
@@ -333,11 +333,12 @@
         inviteIdsInput.addEventListener('input', updateERPCount);
         updateERPCount(); // 初始更新
 
-        // 处理ERP输入内容，支持多行或逗号分隔
+        // 处理ERP输入内容，支持多行、逗号分隔和空格分隔
         function processERPInput(input) {
-            // 首先按换行符分割，然后对每一行按逗号分割，最后去重和过滤空值
+            // 首先将多个空格替换为单个空格，然后按换行符、逗号或空格分割，最后去重和过滤空值
             return input
-                .split(/[\r\n,]/)  // 按换行符或逗号分割
+                .replace(/\s+/g, ' ')  // 将连续多个空格替换为单个空格
+                .split(/[\r\n,\s]/)  // 按换行符、逗号或空格分割
                 .map(id => id.trim())  // 去除首尾空格
                 .filter(id => id !== '')  // 过滤空值
                 .filter((id, index, self) => self.indexOf(id) === index);  // 去重
