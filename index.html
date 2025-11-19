@@ -224,6 +224,19 @@
                 autocomplete="off"
             ></textarea>
             <div class="hint">提示：支持英文逗号分隔、空格分隔或每行一个ERP，系统会自动处理格式</div>
+            <div style="margin: 10px 0; padding: 10px; background: #f5f7fa; border-radius: 6px;">
+                <label style="font-weight: normal; display: block; margin-bottom: 8px; color: #333;">预设联系人：</label>
+                <div style="display: flex; gap: 20px;">
+                    <label style="display: flex; align-items: center; font-weight: normal; cursor: pointer; transition: all 0.2s;">
+                        <input type="checkbox" id="preset-tangyan" value="tangyan" style="margin-right: 8px; cursor: pointer; transform: scale(1.1);"> 
+                        <span style="padding: 5px 12px; background: white; border-radius: 4px; border: 1px solid #e6e9ed; transition: all 0.2s;">唐闫</span>
+                    </label>
+                    <label style="display: flex; align-items: center; font-weight: normal; cursor: pointer; transition: all 0.2s;">
+                        <input type="checkbox" id="preset-zhuangliuxing" value="zhuangliuxing.astra" style="margin-right: 8px; cursor: pointer; transform: scale(1.1);"> 
+                        <span style="padding: 5px 12px; background: white; border-radius: 4px; border: 1px solid #e6e9ed; transition: all 0.2s;">庄留星(Astra)</span>
+                    </label>
+                </div>
+            </div>
             <div class="error" id="inviteError">请输入至少一个有效的ERP</div>
             <div class="count-info" id="erpCountInfo">已输入：0个ERP</div>
         </div>
@@ -332,16 +345,88 @@
         // 初始化 - 监听ERP输入变化，更新计数
         inviteIdsInput.addEventListener('input', updateERPCount);
         updateERPCount(); // 初始更新
+        
+        // 给预设ERP复选框添加事件监听
+        const tangyanCheckbox = document.getElementById('preset-tangyan');
+        const zhuangliuxingCheckbox = document.getElementById('preset-zhuangliuxing');
+        
+        // 为复选框添加选中状态样式变化
+        function setupCheckboxStyle(checkbox) {
+            if (!checkbox) return;
+            
+            const labelSpan = checkbox.nextElementSibling;
+            
+            // 初始状态检查
+            updateCheckboxStyle(checkbox, labelSpan);
+            
+            // 改变时更新样式
+            checkbox.addEventListener('change', function() {
+                updateCheckboxStyle(checkbox, labelSpan);
+                updateERPCount();
+            });
+            
+            // 鼠标悬停效果
+            checkbox.parentElement.addEventListener('mouseenter', function() {
+                if (!checkbox.checked) {
+                    labelSpan.style.borderColor = '#409eff';
+                    labelSpan.style.boxShadow = '0 0 0 2px rgba(64, 158, 255, 0.2)';
+                }
+            });
+            
+            checkbox.parentElement.addEventListener('mouseleave', function() {
+                if (!checkbox.checked) {
+                    labelSpan.style.borderColor = '#e6e9ed';
+                    labelSpan.style.boxShadow = 'none';
+                }
+            });
+        }
+        
+        // 更新复选框样式的函数
+        function updateCheckboxStyle(checkbox, span) {
+            if (checkbox.checked) {
+                span.style.backgroundColor = '#ecf5ff';
+                span.style.borderColor = '#409eff';
+                span.style.color = '#409eff';
+                span.style.boxShadow = '0 0 0 2px rgba(64, 158, 255, 0.2)';
+            } else {
+                span.style.backgroundColor = 'white';
+                span.style.borderColor = '#e6e9ed';
+                span.style.color = '#333';
+                span.style.boxShadow = 'none';
+            }
+        }
+        
+        // 应用样式处理
+        setupCheckboxStyle(tangyanCheckbox);
+        setupCheckboxStyle(zhuangliuxingCheckbox);
 
-        // 处理ERP输入内容，支持多行、逗号分隔和空格分隔
+        // 处理ERP输入内容，支持多行、逗号分隔和空格分隔，并包含选中的预设ERP
         function processERPInput(input) {
             // 首先将多个空格替换为单个空格，然后按换行符、逗号或空格分割，最后去重和过滤空值
-            return input
+            const ids = input
                 .replace(/\s+/g, ' ')  // 将连续多个空格替换为单个空格
                 .split(/[\r\n,\s]/)  // 按换行符、逗号或空格分割
                 .map(id => id.trim())  // 去除首尾空格
-                .filter(id => id !== '')  // 过滤空值
-                .filter((id, index, self) => self.indexOf(id) === index);  // 去重
+                .filter(id => id !== '');  // 过滤空值
+            
+            // 获取选中的预设ERP
+            const presetERP = [];
+            const tangyanCheckbox = document.getElementById('preset-tangyan');
+            const zhuangliuxingCheckbox = document.getElementById('preset-zhuangliuxing');
+            
+            if (tangyanCheckbox && tangyanCheckbox.checked) {
+                presetERP.push(tangyanCheckbox.value);
+            }
+            
+            if (zhuangliuxingCheckbox && zhuangliuxingCheckbox.checked) {
+                presetERP.push(zhuangliuxingCheckbox.value);
+            }
+            
+            // 合并用户输入的ERP和选中的预设ERP
+            const allERP = [...ids, ...presetERP];
+            
+            // 去重处理
+            return allERP.filter((id, index, self) => self.indexOf(id) === index);
         }
 
         // 更新ERP计数显示
